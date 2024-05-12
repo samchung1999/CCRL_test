@@ -34,30 +34,27 @@ class PPO_Buffer:
     def store_value(self, value):
         self.buffer['value'][self.count] = value
 
-    def get_adv(self):  # Use GAE to calculate advantage and v_target
-        with torch.no_grad():  # adv and v_target have no gradient
-            # self.buffer['value'][:-1]=v(s)
-            # self.buffer['value'][1:]=v(s')
-            deltas = self.buffer['r'] + self.gamma * (1.0 - self.buffer['terminal']) * self.buffer['value'][1:] - self.buffer['value'][:-1]  # deltas.shape(rollout_steps,num_envs)
-            adv = torch.zeros_like(self.buffer['r'], device=self.device)  # adv.shape(rollout_steps,num_envs)
-            gae = 0
+    def get_adv(self):  
+        with torch.no_grad():  
+            deltas = self.buffer['r'] + self.gamma * (1.0 - self.buffer['terminal']) * self.buffer['value'][1:] - self.buffer['value'][:-1]  
+            adv = torch.zeros_like(self.buffer['r'], device=self.device) 
             for t in reversed(range(self.rollout_steps)):
                 gae = deltas[t] + self.gamma * self.lamda * gae * (1.0 - self.buffer['terminal'][t])
                 adv[t] = gae
             v_target = adv + self.buffer['value'][:-1]
-            if self.use_adv_norm:  # Advantage normalization
+            if self.use_adv_norm:  
                 adv = ((adv - torch.mean(adv)) / (torch.std(adv) + 1e-5))
 
         return adv, v_target
 
     def get_training_data(self):
         adv, v_target = self.get_adv()
-        # batch_size = rollout_steps * num_envs
-        batch = {'s_map': self.buffer['s_map'].reshape((-1,) + self.s_map_dim),  # (batch_size,s_map_dim)
-                 's_sensor': self.buffer['s_sensor'].reshape((-1,) + self.s_sensor_dim),  # (batch_size,s_sensor_dim)
-                 'a': self.buffer['a'].reshape(-1),  # (batch_size,)
-                 'logprob': self.buffer['logprob'].reshape(-1),  # (batch_size,)
-                 'adv': adv.reshape(-1),  # (batch_size,)
-                 'v_target': v_target.reshape(-1),  # (batch_size,)
+
+        batch = {'s_map': self.buffer['s_map'].reshape((-1,) + self.s_map_dim),  
+                 's_sensor': self.buffer['s_sensor'].reshape((-1,) + self.s_sensor_dim),  
+                 'a': self.buffer['a'].reshape(-1), 
+                 'logprob': self.buffer['logprob'].reshape(-1),  
+                 'adv': adv.reshape(-1),  
+                 'v_target': v_target.reshape(-1),  
                  }
         return batch

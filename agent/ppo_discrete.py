@@ -15,12 +15,12 @@ class PPO_Discrete:
         self.device = config.device
         self.minibatches = config.minibatches
         self.max_train_steps = config.max_train_steps
-        self.lr = config.lr  # Learning rate of actor
-        self.gamma = config.gamma  # Discount factor
-        self.lamda = config.lamda  # GAE parameter
-        self.epsilon = config.epsilon  # PPO clip parameter
-        self.K_epochs = config.K_epochs  # PPO parameter
-        self.entropy_coef = config.entropy_coef  # Entropy coefficient
+        self.lr = config.lr  
+        self.gamma = config.gamma  
+        self.lamda = config.lamda  
+        self.epsilon = config.epsilon  
+        self.K_epochs = config.K_epochs  
+        self.entropy_coef = config.entropy_coef  
         self.critic_loss_coef = config.critic_loss_coef
         self.set_adam_eps = config.set_adam_eps
         self.use_grad_clip = config.use_grad_clip
@@ -33,7 +33,7 @@ class PPO_Discrete:
         self.ppo_buffer = PPO_Buffer(config, num_envs)
         self.ac_net = Actor_Critic(config).to(self.device)
 
-        if self.set_adam_eps:  # Set Adam epsilon=1e-5
+        if self.set_adam_eps: 
             if self.use_AdamW:
                 self.optimizer = torch.optim.AdamW(self.ac_net.parameters(), lr=self.lr, eps=1e-5, weight_decay=self.weight_decay)
             else:
@@ -73,21 +73,19 @@ class PPO_Discrete:
             return a, logprob, value, {'s_map': s_map, 's_sensor': s_sensor}
 
     def update(self, ):
-        batch = self.ppo_buffer.get_training_data()  # Get training data
+        batch = self.ppo_buffer.get_training_data() 
         batch_size = batch['a'].shape[0]
         minibatch_size = batch_size // self.minibatches
-        # Optimize policy for K epochs:
         for _ in range(self.K_epochs):
             for index in BatchSampler(SubsetRandomSampler(range(batch_size)), minibatch_size, False):
                 logits_now, values_now = self.ac_net.get_logit_and_value(batch['s_map'][index], batch['s_sensor'][index])
                 dist_now = Categorical(logits=logits_now)
-                dist_entropy = dist_now.entropy()  # shape(minibatch_size,)
+                dist_entropy = dist_now.entropy() 
                 entropy_loss = dist_entropy.mean()
 
-                logprob_now = dist_now.log_prob(batch['a'][index])  # shape(minibatch_size,)
-                # a/b=exp(log(a)-log(b))
-                ratios = torch.exp(logprob_now - batch['logprob'][index])  # shape(minibatch_size,)
-                surr1 = ratios * batch['adv'][index]  # Only calculate the gradient of 'logprob_now' in ratios
+                logprob_now = dist_now.log_prob(batch['a'][index])  
+                ratios = torch.exp(logprob_now - batch['logprob'][index])  
+                surr1 = ratios * batch['adv'][index]
                 surr2 = torch.clamp(ratios, 1 - self.epsilon, 1 + self.epsilon) * batch['adv'][index]
                 actor_loss = -torch.min(surr1, surr2).mean()
 
@@ -108,7 +106,7 @@ class PPO_Discrete:
 
                 self.optimizer.zero_grad()
                 loss.backward()
-                if self.use_grad_clip:  # Gradient clip
+                if self.use_grad_clip:  
                     torch.nn.utils.clip_grad_norm_(self.ac_net.parameters(), 0.5)
                 self.optimizer.step()
 

@@ -27,7 +27,6 @@ class Runner:
         self.save_model = config.save_model
         self.rollout_steps = config.rollout_steps
 
-        # Set seed
         np.random.seed(self.seed)
         torch.manual_seed(self.seed)
         torch.cuda.manual_seed(self.seed)
@@ -35,7 +34,6 @@ class Runner:
         torch.backends.cudnn.benchmark = False
         torch.backends.cudnn.deterministic = True
 
-        # Create env
         self.map_names = ["train_map_l1", "train_map_l2", "train_map_l3", "train_map_l4", "train_map_l5"]
 
         self.map_index_now = 0
@@ -55,18 +53,16 @@ class Runner:
         self.num_envs = len(vector_maps)
         print("num_envs={}".format(self.num_envs))
 
-        # Create agent
         self.agent = PPO_Discrete(config, num_envs=self.num_envs)
-        # Create tensorboard
         self.writer = SummaryWriter(log_dir='./tensorboard/{}_env_{}_number_{}_seed_{}'.format(self.algorithm, self.env_version, self.number, self.seed))
 
-        self.step_times = 0  # Total vectorized steps of envs
-        self.total_steps_per_map = np.zeros(self.map_index_now + 1, dtype=np.int32)  # Total transitions sample on per map
+        self.step_times = 0  
+        self.total_steps_per_map = np.zeros(self.map_index_now + 1, dtype=np.int32) 
         self.delta_steps = np.ones(self.map_index_now + 1, dtype=np.int32) * self.num_envs_per_map
-        self.evaluate_num = -1  # Record the number of evaluations
+        self.evaluate_num = -1  
         self.evaluate_rewards = [[] for _ in range(len(self.map_names))]
         self.evaluate_explore_rates = [[] for _ in range(len(self.map_names))]
-        self.map_explore_rates = []  # Record the map exploration rate
+        self.map_explore_rates = []  
         self.switch_index = []
 
     def switch_map(self):
@@ -85,7 +81,7 @@ class Runner:
         self.delta_steps = np.ones(self.map_index_now + 1, dtype=np.int32) * self.num_envs_per_map
         self.num_envs = len(vector_maps)
         print("num_envs={}".format(self.num_envs))
-        self.agent.reset_buffer(num_envs=self.num_envs)  # Reset buffer
+        self.agent.reset_buffer(num_envs=self.num_envs) 
         print("Add {}".format(self.map_names[self.map_index_now]))
         self.evaluate_single_map(self.map_index_now, self.env_evaluate[-1], self.total_steps_per_map[self.map_index_now])
 
@@ -95,7 +91,7 @@ class Runner:
         s, info = self.envs.reset()
         while self.step_times < self.max_train_steps:
             if self.step_times // self.evaluate_freq > self.evaluate_num:
-                self.evaluate_policy()  # Evaluate the policy every 'evaluate_freq' steps
+                self.evaluate_policy() 
                 if len(self.map_explore_rates) >= 10 and np.mean(self.map_explore_rates[-10:]) >= 0.95 and self.map_index_now < len(self.map_names) - 1:
                     s = self.switch_map()
 
@@ -104,19 +100,19 @@ class Runner:
             self.step_times += 1
             self.total_steps_per_map += self.delta_steps
 
-            # Store the transition
+           
             self.agent.ppo_buffer.store_transition(s, value, a, logprob, r, terminal)
             s = s_
 
             if self.agent.ppo_buffer.count == self.rollout_steps:
                 value = self.agent.get_value(s)
                 self.agent.ppo_buffer.store_value(value)
-                self.agent.update() # Update
+                self.agent.update() 
                 self.agent.ppo_buffer.count = 0
 
         self.evaluate_policy()
 
-        # Save reward and map exploration rate
+        
         for map_index in range(len(self.map_names)):
             np.save('./data_train/{}_env_{}_{}_number_{}_seed_{}_reward.npy'.format(self.algorithm, self.env_version, self.map_names[map_index], self.number, self.seed), np.array(self.evaluate_rewards[map_index]))
             np.save('./data_train/{}_env_{}_{}_number_{}_seed_{}_rate.npy'.format(self.algorithm, self.env_version, self.map_names[map_index], self.number, self.seed), np.array(self.evaluate_explore_rates[map_index]))
@@ -126,7 +122,7 @@ class Runner:
 
     def evaluate_policy(self):
         self.evaluate_num += 1
-        for map_index, env in enumerate(self.env_evaluate):  # The policy is evaluated simultaneously on all previously experienced levels
+        for map_index, env in enumerate(self.env_evaluate): 
             self.evaluate_single_map(map_index, env, self.total_steps_per_map[map_index])
         if self.save_model:
             self.agent.save_model(algorithm=self.algorithm, env_version=self.env_version, map_name='all_maps', number=self.number, seed=self.seed, index=self.evaluate_num)
@@ -159,7 +155,7 @@ if __name__ == '__main__':
     config = get_configs()
     config.algorithm = "CCPPO"
 
-    config_dict = vars(config)  # print all hyper-parameters
+    config_dict = vars(config)  
     for key in config_dict.keys():
         print("{}={}".format(key, config_dict[key]))
 

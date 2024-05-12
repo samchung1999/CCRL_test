@@ -4,7 +4,7 @@ from utils.str2bool import str2bool
 
 def get_configs():
     parser = argparse.ArgumentParser()
-    # ---------------------------------------------------Training-------------------------------------------------
+    # ---------------------------------------------------------------------------------------------------
     parser.add_argument("--env_version", type=str, default="v1", help="The version of gym env")
     parser.add_argument("--random_obstacle", type=str2bool, default=True, help="Whether to use random obstacles")
     parser.add_argument("--num_envs_per_map", type=int, default=4, help="The number of vectorized envs per map")
@@ -14,7 +14,7 @@ def get_configs():
     parser.add_argument("--evaluate_freq", type=int, default=int(1e3), help="Evaluate the policy every 'evaluate_freq' steps")
     parser.add_argument("--evaluate_times", type=float, default=3, help="Evaluate times")
     parser.add_argument("--save_model", type=str2bool, default=True, help="Whether to save models")
-    # ---------------------------------------------------PPO---------------------------------------------------
+    # ------------------------------------------------------------------------------------------------------
     parser.add_argument("--max_train_steps", type=int, default=int(3e5), help=" Maximum number of training steps")
     parser.add_argument("--rollout_steps", type=int, default=256, help="Rollout steps")
     parser.add_argument("--minibatches", type=int, default=8, help="The number of minibatches")
